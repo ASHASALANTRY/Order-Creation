@@ -1,0 +1,22 @@
+services:
+  # YOUR SPRING BOOT CONSUMER APP
+  consumer-app:
+    build: .
+    container_name: spring-consumer
+    ports:
+      - "8096:8096"
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_CONSUMER_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
+      SPRING_DATASOURCE_USERNAME: myuser
+      SPRING_DATASOURCE_PASSWORD: mypassword
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    networks:
+      - consumer-kafka-net # Links directly to the producer's network
+      # Define the network connection at the bottom
+networks:
+  consumer-kafka-net:       # Internal shorthand key for this file
+    external: true          # Tells Docker: "This network already exists, do not create a new one" [1]
+    name: shared-kafka-net   # The exact global name created by your producer file [1]

@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+# -----------------------------------------------------------------------------
+# Stage 1: Build the application using Maven and BuildKit Cache
+# -----------------------------------------------------------------------------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+
+WORKDIR /build
+
+# Copy all project files (source, pom.xml, etc.) into the container
+COPY . .
+
+# Run the build using a cache mount for the local Maven repository (.m2 folder).
+# This ensures dependencies are cached across builds on your local host machine.
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -DskipTests
+
+# -----------------------------------------------------------------------------
+# Stage 2: Create a minimal runtime image containing only the executable JAR
+# -----------------------------------------------------------------------------
+FROM eclipse-temurin:17-jre-jammy AS runtime
+
+WORKDIR /app
+
+# Create a non-root user for security purposes
+RUN useradd -m appuser
+USER appuser
+
+# Copy the compiled JAR from the builder stage
+# Note: Replace 'your-app-name' with the actual final name defined in your pom.xml
+COPY --from=builder /build/target/*-SNAPSHOT.jar app.jar
+
+# Expose the application port (adjust if your service uses a different port)
+EXPOSE 8086
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]

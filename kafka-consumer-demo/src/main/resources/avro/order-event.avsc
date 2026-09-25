@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "OrderEvent",
+  "namespace": "com.enterprise.order.avro",
+  "doc": "Enterprise Avro definition migrating the legacy Java record.",
+  "fields": [
+    { "name": "orderId", "type": "string", "doc": "Unique identifier for the order" },
+    { "name": "status", "type": "string", "doc": "Current status string" },
+    { "name": "customerNotes", "type":["null","string"],"default": null,"doc":"customer reviews"}
+  ]
+}

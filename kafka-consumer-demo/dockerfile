@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+# -----------------------------------------------------------------------------
+# Stage 1: Build the application using Maven and BuildKit Cache
+# -----------------------------------------------------------------------------
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+
+# Copy all project files (source, pom.xml, etc.) into the container
+COPY . .
+
+# 2. Build the application using a native BuildKit cache mount
+# This shares the .m2 folder across builds, even when source code changes!
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -DskipTests
+
+# Stage 2: Create the runtime image
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*-SNAPSHOT.jar app.jar
+EXPOSE 8095
+ENTRYPOINT ["java", "-jar", "app.jar"]
