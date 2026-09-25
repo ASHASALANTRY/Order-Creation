@@ -31,30 +31,7 @@ public class KafkaConsumerConfig {
     }
 
     // concurrency = "3" spins up 3 separate consumer threads for parallel processing
-    @KafkaListener (
-        topics = "order-events",
-        groupId = "order-processing-group",concurrency = "3")
-    public void consume(ConsumerRecord<String, OrderEvent> record, Acknowledgment acknowledgment,  @Header(KafkaHeaders.RECEIVED_PARTITION) int partition){
-        log.info("received message from order partition[{}] at offset [{}] with key [{}]",
-                record.partition(),record.offset(),record.key());
-        OrderEvent orderEvent=record.value();
-        System.out.println("Read event payload! Order ID: " + orderEvent.getOrderId());
-        System.out.println("Received message from partition: " + partition);
-        // Hand off cleanly to your dedicated internal business logic service
-//              orderProcessingService.process(orderEvent);
-              acknowledgment.acknowledge();
-        }
-        @KafkaListener(
-                topics="inventory-updates",
-                groupId="order-processing-group")
-    public void consumeInventory(ConsumerRecord<String, InventoryUpdateEvent> record,Acknowledgment acknowledgment, @Header(KafkaHeaders.RECEIVED_PARTITION) int partition){
-            log.info("received message from inventory partition[{}] at offset [{}] with key [{}]",
-                    record.partition(),record.offset(),record.key());
-        InventoryUpdateEvent inventoryUpdateEvent=record.value();
-            System.out.println("Read event payload! sku ID: " + inventoryUpdateEvent.getSku());
-            System.out.println("Received message from inventory partition: " + partition);
-            acknowledgment.acknowledge();
-        }
+
     @RetryableTopic(
             attempts = "3",
             backOff = @BackOff(delay = 2000, multiplier = 2.0),

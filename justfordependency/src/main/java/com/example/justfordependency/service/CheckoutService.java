@@ -100,33 +100,4 @@ public class CheckoutService {
         }
         return "Your request is successfully sent to kafka";
     }
-    /**
-     * Helper to generate a static list of mock items for the demo payload.
-     *//*
-    private List<OrderItemDto> createMockItems() {
-        OrderItemDto item1 = new OrderItemDto();
-        item1.setProductId("prod_laptop_001");
-        item1.setQuantity(1);
-        item1.setPrice(1200.00); // Fixed price mapping
-
-        OrderItemDto item2 = new OrderItemDto();
-        item2.setProductId("prod_mouse_002");
-        item2.setQuantity(2);
-        item2.setPrice(25.50);
-
-        return Arrays.asList(item1, item2);
-    }
-
-    *//**
-     * Helper to generate a static mock shipping address object.
-     *//*
-    private ShippingAddressDto createMockShippingDetails() {
-        ShippingAddressDto shipping = new ShippingAddressDto();
-        shipping.setFullName("John Doe");
-        shipping.setAddressLine1("123 Demo Lane");
-        shipping.setCity("Tech City");
-        shipping.setCountry("CA");
-        shipping.setPostalCode("94016");
-        return shipping;
-    }*/
 }
