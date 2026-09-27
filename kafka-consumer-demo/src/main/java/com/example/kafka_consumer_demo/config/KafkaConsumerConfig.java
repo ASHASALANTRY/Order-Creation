@@ -1,8 +1,7 @@
 package com.example.kafka_consumer_demo.config;
 
 import com.enterprise.OrderCheckout.avro.OrderCheckoutSubmittedEvent;
-import com.enterprise.inventory.avro.InventoryUpdateEvent;
-import com.enterprise.order.avro.OrderEvent;
+
 import com.example.kafka_consumer_demo.service.OrderProcessingService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -35,8 +34,8 @@ public class KafkaConsumerConfig {
     @RetryableTopic(
             attempts = "3",
             backOff = @BackOff(delay = 2000, multiplier = 2.0),
-            dltStrategy = DltStrategy.FAIL_ON_ERROR,
-            include = { java.sql.SQLException.class }
+            dltStrategy = DltStrategy.FAIL_ON_ERROR
+//            include = { java.sql.SQLException.class }
     )
         @KafkaListener(topics="order-checkout-events", groupId="order-processing-group")
     public void orderConsume(ConsumerRecord<String, OrderCheckoutSubmittedEvent> record, Acknowledgment acknowledgment, @Header(KafkaHeaders.RECEIVED_PARTITION) int partition) {

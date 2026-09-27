@@ -3,19 +3,12 @@ package com.example.justfordependency.dto;
 import lombok.Data;
 
 @Data
-public class ShippingAddressDto {
-
-    private String fullName;
+public class ShippingAddressRequest {
 
 
-    private String addressLine1;
-
-
+    private String street;
     private String city;
-
-
     private String postalCode;
-
-
     private String country;
+
 }

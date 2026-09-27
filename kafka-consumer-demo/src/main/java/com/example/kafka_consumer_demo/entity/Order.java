@@ -15,21 +15,24 @@ import java.util.UUID;
 public class Order {
 
     @Id
-    @Column(name = "id", length = 64)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id")
     private UUID id; // Matches the orderId generated upstream
 
+    @Column(name= "orderId")
+    private String orderId;
+
     @Column(name = "customer_id", length = 64)
-    private UUID customerId;
+    private String customerId;
 
     @Column(name = "status", length = 32)
     private String status; // e.g., PENDING, PAID, CANCELLED
 
-    @Column(name = "total_amount", precision = 10)
-    private Double totalAmount;
+//    @Column(name = "total_amount", precision = 10)
+//    private Double totalAmount;
 
 
-
-    @Embedded // Flattens shipping columns into the orders table directly
+    @Embedded
     private ShippingAddress shippingAddress;
 
     @Column(name = "created_at", updatable = false)

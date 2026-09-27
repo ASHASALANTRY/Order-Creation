@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -35,7 +36,7 @@ public class OrderProcessingService {
     public void
     process(OrderCheckoutSubmittedEvent event, String idempotencyKey)  {
 
-        if(processedEventRepository.existsById(event.getEventId())){
+        if(processedEventRepository.existsByEventId(idempotencyKey)){
 //            throw new IllegalArgumentException();
             updateRedis(idempotencyKey);
             return;
@@ -46,9 +47,9 @@ public class OrderProcessingService {
         ArrayList<OrderItem> orderItems=new ArrayList<>();
         event.getItems().forEach(avroItem->{
             OrderItem item = new OrderItem();
-            item.setProductId(avroItem.getProductId());
+            item.setSku(avroItem.getSku());
             item.setQuantity(avroItem.getQuantity());
-            item.setPrice(avroItem.getPrice()); // Ensure matching types (Double/BigDecimal)
+            item.setUnitPrice(avroItem.getPrice()); // Ensure matching types (Double/BigDecimal)
             order.addItem(item);
         });
         ShippingAddress shippingAddress=new ShippingAddress();
@@ -57,20 +58,20 @@ public class OrderProcessingService {
         // 2. Manually map shipping details without using ObjectMapper
         if (event.getShippingDetails() != null) {
             var avroShipping = event.getShippingDetails();
-            shippingAddress.setFullName(avroShipping.getFullName());
-            shippingAddress.setAddressLine1(avroShipping.getAddressLine1());
+            shippingAddress.setStreet(avroShipping.getStreet());
             shippingAddress.setCity(avroShipping.getCity());
             shippingAddress.setCountry(avroShipping.getCountry());
             shippingAddress.setPostalCode(avroShipping.getPostalCode());
         }
             order.setShippingAddress(shippingAddress);
 //        order.setShippingAddress(objectMapper.convertValue(event.getShippingDetails().getSchema(),ShippingAddress.class));
-        order.setId(event.getOrderId());
+        order.setOrderId(event.getOrderId());
         order.setCustomerId(event.getCustomerId());
         order.setStatus("PENDING");
         ProcessedEvent processedEvent=new ProcessedEvent();
         processedEvent.setEventId(event.getEventId());
-        processedEvent.setIdempotencyKey(idempotencyKey);
+        processedEvent.setEventType(event.getEventType());
+        processedEvent.setStatus("PROCESSED");
         processedEventRepository.save(processedEvent);
         orderRepository.save(order);
 //        objectMapper.convertValue(OrderCheckoutSubmittedEvent,)
@@ -87,9 +88,7 @@ public class OrderProcessingService {
     }
 
     void updateRedis(String idempotencyKey){
-        try {
-            redisTemplate.opsForValue().set(idempotencyKey, "PROCESSED");
-        }catch (Exception e){
-            log.error("some issue with redis");}
+            redisTemplate.opsForValue().set(idempotencyKey, "PROCESSED", 1, TimeUnit.DAYS);
+
     }
 }

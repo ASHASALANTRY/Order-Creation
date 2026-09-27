@@ -22,11 +22,11 @@ public class OrderItem {
     private Order order; // Creates foreign key constraint linking to orders(id)
 
     @Column(name = "product_id",  nullable = false)
-    private UUID productId;
+    private String sku;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
     @Column(name = "price", nullable = false)
-    private Double price; // Immutable historical sale price
+    private Double unitPrice; // Immutable historical sale price
 }

@@ -84,30 +84,43 @@ services:
       KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
     networks:
       - kafka-net
-
-  producer-app:
-    build: .
-    container_name: producer-app
+  redis-ui:
+    image: redis/redisinsight:latest
+    container_name: redis-ui
     depends_on:
-      kafka:
-        condition: service_healthy
-      postgres:
-        condition: service_started
-      redis:
-        condition: service_started
+      - redis
     ports:
-      - "8086:8086"
+      - "5540:5540"
     environment:
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_KAFKA_PRODUCER_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      SPRING_KAFKA_PRODUCER_PROPERTIES_AVRO_USE_LOGICAL_TYPE_CONVERTERS: "true"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
-      SPRING_DATASOURCE_USERNAME: myuser
-      SPRING_DATASOURCE_PASSWORD: mypassword
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
+      # Automatically adds your redis container to the UI panel on startup
+      REDISONLY_SERVER: redis
+      REDISONLY_PORT: 6379
     networks:
       - kafka-net
+
+#  producer-app:
+#    build: .
+#    container_name: producer-app
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#      postgres:
+#        condition: service_started
+#      redis:
+#        condition: service_started
+#    ports:
+#      - "8086:8086"
+#    environment:
+#      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+#      SPRING_KAFKA_PRODUCER_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+#      SPRING_KAFKA_PRODUCER_PROPERTIES_AVRO_USE_LOGICAL_TYPE_CONVERTERS: "true"
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
+#      SPRING_DATASOURCE_USERNAME: myuser
+#      SPRING_DATASOURCE_PASSWORD: mypassword
+#      SPRING_DATA_REDIS_HOST: redis
+#      SPRING_DATA_REDIS_PORT: 6379
+#    networks:
+#      - kafka-net
 
 networks:
   kafka-net:

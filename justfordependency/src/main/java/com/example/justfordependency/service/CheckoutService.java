@@ -3,8 +3,9 @@ package com.example.justfordependency.service;
 import com.enterprise.OrderCheckout.avro.CheckoutItemAvro;
 import com.enterprise.OrderCheckout.avro.OrderCheckoutSubmittedEvent;
 import com.enterprise.OrderCheckout.avro.ShippingDetailsAvro;
-import com.example.justfordependency.dto.OrderItemDto;
-import com.example.justfordependency.dto.ShippingAddressDto;
+import com.example.justfordependency.dto.CheckoutOrderRequest;
+import com.example.justfordependency.dto.OrderItemRequest;
+import com.example.justfordependency.dto.ShippingAddressRequest;
 import com.example.justfordependency.exception.custom.KafkaException;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
@@ -15,12 +16,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,9 +29,6 @@ public class CheckoutService {
     private static final Logger log= LoggerFactory.getLogger(CheckoutService.class);
     private final KafkaTemplate<String, OrderCheckoutSubmittedEvent> kafkaTemplate;
     private static final String KAFKA_TOPIC = "order-checkout-events";
-    private static final String STATIC_EVENT_ID = "evt_demo_12345";
-    private static final String STATIC_ORDER_ID = "ord_demo_67890";
-    private static final String STATIC_CUSTOMER_ID = "cust_demo_999";
     private static final String STATIC_EVENT_TYPE = "ORDER_CHECKOUT_SUBMITTED";
     private final RedisTemplate<String,String> redisTemplate;
 
@@ -43,61 +38,76 @@ public class CheckoutService {
         this.redisTemplate = redisTemplate;
 
     }
-    @Transactional
-    public String initialOrderFlow(String orderId){
+
+    public String initialOrderFlow(String orderId, CheckoutOrderRequest request){
+
+            String idempotencyKey = MDC.get("idempotencyKey");
+            if (idempotencyKey == null) {
+                throw new IllegalArgumentException("Idempotency key is missing from context.");
+            }
         try {
-            OrderCheckoutSubmittedEvent orderCheckoutSubmittedEvent = OrderCheckoutSubmittedEvent.newBuilder().setEventId(UUID.randomUUID()).setEventType(STATIC_EVENT_TYPE).setTimestamp(Instant.now()).setOrderId(UUID.randomUUID()).setCustomerId(UUID.randomUUID())
-                    .setCartId(null) // Explicitly set missing union fields
-                    .setPaymentMethodToken(null) // <-- This prevents the crash
-                    .setItems(List.of(CheckoutItemAvro.newBuilder().setProductId(UUID.randomUUID())
-                    .setQuantity(1)
-                    .setPrice(1200.00).build(), CheckoutItemAvro.newBuilder().setProductId(UUID.randomUUID())
-                    .setQuantity(2)
-                    .setPrice(25.50).build())).setShippingDetails(ShippingDetailsAvro.newBuilder().setFullName("John Doe")
-                    .setAddressLine1("123 Demo Lane")
-                    .setCity("Tech City")
-                    .setCountry("CA")
-                    .setPostalCode("1111").build()).build();
+            OrderCheckoutSubmittedEvent orderCheckoutSubmittedEvent = OrderCheckoutSubmittedEvent.newBuilder().
+                    setEventId(idempotencyKey).
+                    setEventType(STATIC_EVENT_TYPE).
+                    setTimestamp(Instant.now()).setOrderId(orderId).setCustomerId(request.getCustomerId())
+                    .setItems(mapItems(request.getItems())).
+                    setShippingDetails(mapShippingAddress(request.getShippingAddress())).build();
+
+
+
             ProducerRecord<String, OrderCheckoutSubmittedEvent> producerRecord=new ProducerRecord<>(KAFKA_TOPIC, orderId, orderCheckoutSubmittedEvent);
             // Retrieve the key instantly from the current thread context
-            String idempotencyKey = MDC.get("idempotencyKey");
             producerRecord.headers().add("idempotencyKey",idempotencyKey.getBytes(StandardCharsets.UTF_8));
-            CompletableFuture<SendResult<String, OrderCheckoutSubmittedEvent>> future = kafkaTemplate.send(producerRecord);
-            future.whenComplete((result, ex) -> {
+            SendResult<String, OrderCheckoutSubmittedEvent> result = kafkaTemplate.send(producerRecord)     .get(10, TimeUnit.SECONDS);
+            log.info("Event sent successfully to partition [{}] with offset [{}]",
+                    result.getRecordMetadata().partition(),
+                    result.getRecordMetadata().offset());
 
-                if (ex == null) {
-                    log.info("event sent successfully to partition[{}] with offset[{}]",
-                            result.getRecordMetadata().partition(),
-                            result.getRecordMetadata().offset());
-                    try{
-                        redisTemplate.opsForValue().set(idempotencyKey, "PUBLISHED");
-                    }catch(Exception e)
-                        {
-                            log.error("some thing went wrong with redis");
-                        }
-                }
-                else{
-                    log.info("failed to send event to kafka due to error", ex);
-                try{
+            // Update Redis status to completed since everything succeeded
+            try {
+                redisTemplate.opsForValue().set(idempotencyKey, "PUBLISHED", 1, TimeUnit.DAYS);
+            } catch (Exception e) {
+                log.error("Failed to update final status in Redis for key: {}", idempotencyKey, e);
+                // We don't fail the order just because Redis status write failed at the end
+            }
+
+        } catch (Exception e) {
+            log.error("Checkout process failed for order [{}]. Initiating state rollback.", orderId, e);
+
+            // Clean up Redis synchronously so the user can immediately retry their request
+            try {
                 redisTemplate.delete(idempotencyKey);
-            }catch(Exception e)
-            {
-                log.error("some thing went wrong with redis");
+            } catch (Exception redisEx) {
+                log.error("Failed to clean up idempotency key from Redis during exception handling", redisEx);
             }
-                throw new KafkaException("failed to send event to kafka");
-                }
-            });
-        }catch(Exception e){
-            log.error("error while parsing {}",e.getMessage());
-            try{
-                redisTemplate.delete(MDC.get("idempotencyKey"));
-            }catch(Exception ex)
-            {
-                log.error("some thing went wrong with redis");
-            }
-            throw new KafkaException("failed to send event to kafka");
 
+            // Propagate the failure so Spring can roll back the Kafka transaction.
+            throw new KafkaException("Failed to process order submission due to downstream network errors.");
         }
-        return "Your request is successfully sent to kafka";
+
+        return "Your request is successfully Published";
+    }
+    private ShippingDetailsAvro mapShippingAddress(
+            ShippingAddressRequest address) {
+
+        return ShippingDetailsAvro.newBuilder()
+                .setStreet(address.getStreet())
+                .setCity(address.getCity())
+                .setPostalCode(address.getPostalCode())
+                .setCountry(address.getCountry())
+                .build();
+    }
+    private List<CheckoutItemAvro> mapItems(
+            List<OrderItemRequest> items) {
+
+        return items.stream()
+                .map(item ->
+                        CheckoutItemAvro.newBuilder()
+                                .setSku(item.getSku())
+                                .setQuantity(item.getQuantity())
+                                .setPrice(
+                                        item.getUnitPrice().doubleValue())
+                                .build())
+                .toList();
     }
 }

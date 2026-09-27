@@ -1,6 +1,5 @@
 package com.example.kafka_consumer_demo.config;
 
-import com.enterprise.order.avro.OrderEvent;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;

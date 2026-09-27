@@ -7,10 +7,7 @@
     {
       "name": "eventId",
       "doc": "Unique identifier for deduplication and tracing generated at the edge gateway.",
-       "type": {
-        "type": "string",
-        "logicalType": "uuid"
-      }
+      "type": "string"
     },
     {
       "name": "eventType",
@@ -27,36 +24,13 @@
     },
     {
       "name": "orderId",
-      "doc": "The pre-allocated order identifier generated upstream.",
-      "type": {
-        "type": "string",
-        "logicalType": "uuid"
-      }
+      "type": "string",
+      "doc": "The pre-allocated order identifier generated upstream."
     },
     {
       "name": "customerId",
       "doc": "The unique identifier of the purchasing customer. Used as the Kafka partition key.",
-      "type": {
-        "type": "string",
-        "logicalType": "uuid"
-      }
-    },
-    {
-      "name": "cartId",
-      "type": [
-        "null",
-        {
-        "type": "string",
-        "logicalType": "uuid"
-      }],
-      "default": null,
-      "doc": "Optional cart reference from which checkout originated."
-    },
-    {
-      "name": "paymentMethodToken",
-      "type": ["null", "string"],
-      "default": null,
-      "doc": "The secure tokenized reference representing payment intent."
+      "type": "string"
     },
     {
       "name": "items",
@@ -66,12 +40,7 @@
           "type": "record",
           "name": "CheckoutItemAvro",
           "fields": [
-            { "name": "productId",
-            "type": {
-                "type": "string",
-                "logicalType": "uuid"
-             }
-             },
+            { "name": "sku","type": "string" },
             { "name": "quantity", "type": "int" },
             {
               "name": "price",
@@ -89,8 +58,7 @@
         "type": "record",
         "name": "ShippingDetailsAvro",
         "fields": [
-          { "name": "fullName", "type": "string" },
-          { "name": "addressLine1", "type": "string" },
+          { "name": "street", "type": "string" },
           { "name": "city", "type": "string" },
           { "name": "postalCode", "type": "string" },
           { "name": "country", "type": "string" }
