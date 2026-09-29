@@ -19,7 +19,7 @@ public class OrderItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    private Order order; // Creates foreign key constraint linking to orders(id)
+    private Order order;
 
     @Column(name = "product_id",  nullable = false)
     private String sku;
@@ -28,5 +28,5 @@ public class OrderItem {
     private Integer quantity;
 
     @Column(name = "price", nullable = false)
-    private Double unitPrice; // Immutable historical sale price
+    private Double unitPrice;
 }

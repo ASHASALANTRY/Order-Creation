@@ -49,10 +49,9 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                if (status.equals("PROCESSING")) {
                    sendErrorResponse(response,  HttpStatus.CONFLICT,"Your request is already registered and is currently being processed");
                } else {
-                   // 1. Set the key into the thread-local MDC context
-                   response.setStatus(HttpServletResponse.SC_OK);
-                   response.setHeader("X-cache-Lookup", "HIT");
-                   response.getWriter().write("Your request is already "+status);//return saved previous response
+
+                   sendErrorResponse(response,  HttpStatus.CONFLICT,"Your request is already "+status);
+
                }
 
                return;//blocks controller from execution twice
@@ -67,6 +66,22 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                 response.setHeader("X-idempotency-status", "Accepted");
 
                 filterChain.doFilter(request, response);
+                // Request reached Spring but failed request validation
+                if (response.getStatus() == HttpStatus.BAD_REQUEST.value()) {
+
+                    String currentStatus =
+                            redisTemplate.opsForValue().get(redisKey);
+
+                    if ("PROCESSING".equals(currentStatus)) {
+
+                        redisTemplate.delete(redisKey);
+
+                        log.info(
+                                "Deleted idempotency key [{}] because request validation failed",
+                                idempotencyKey
+                        );
+                    }
+                }
             }catch (Exception e){
                 log.error("Idempotency Redis storage failure for key: {}", idempotencyKey, e);
                 sendErrorResponse(response, HttpStatus.SERVICE_UNAVAILABLE, "System is temporarily unable to process payments. Please try again shortly.");

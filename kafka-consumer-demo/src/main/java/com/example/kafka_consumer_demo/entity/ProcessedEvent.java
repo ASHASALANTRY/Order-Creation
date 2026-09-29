@@ -22,7 +22,7 @@ public class ProcessedEvent {
     private String eventType; // e.g., ORDER_CHECKOUT_SUBMITTED
 
     @Column(name = "status", length = 32, nullable = false)
-    private String status; // e.g., SUCCESS, INVALID_PAYLOAD, FAILED_VALIDATION
+    private String status; // e.g., PROCESSED, PUBLISHED, PROCESSING
 
     @Column(name = "processed_at", nullable = false, updatable = false)
     private Instant processedAt = Instant.now();

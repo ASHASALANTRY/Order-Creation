@@ -14,6 +14,9 @@ public class KafkaProducerConfig {
 
     @Bean
     public NewTopic orderCheckoutTopic(){
-        return TopicBuilder.name("order-checkout-events").partitions(2).replicas(1).build();
+        return TopicBuilder.name("order-checkout-events").
+                partitions(2).
+                replicas(1).
+                build();
     }
 }

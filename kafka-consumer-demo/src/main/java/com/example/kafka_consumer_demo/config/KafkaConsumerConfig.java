@@ -38,7 +38,9 @@ public class KafkaConsumerConfig {
 //            include = { java.sql.SQLException.class }
     )
         @KafkaListener(topics="order-checkout-events", groupId="order-processing-group")
-    public void orderConsume(ConsumerRecord<String, OrderCheckoutSubmittedEvent> record, Acknowledgment acknowledgment, @Header(KafkaHeaders.RECEIVED_PARTITION) int partition) {
+    public void orderConsume(ConsumerRecord<String, OrderCheckoutSubmittedEvent> record,
+                             Acknowledgment acknowledgment,
+                             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition) {
             log.info("received checked out order partition[{}] at offset [{}] with key [{}]",
                     record.partition(),record.offset(),record.key());
     OrderCheckoutSubmittedEvent checkoutSubmittedEvent=record.value();
@@ -50,11 +52,9 @@ public class KafkaConsumerConfig {
     System.out.println("Read event payload! sku ID: " + checkoutSubmittedEvent.getOrderId());
     System.out.println("Received message from inventory partition: " + partition);
     System.out.println("Received header idempotencyKey: " + idempotencyKey);
-//    try {
+
         orderProcessingService.process(checkoutSubmittedEvent,idempotencyKey);
-//    }catch (Exception e){
-//        log.error("exception occurred: {}", e.getMessage());
-//    }
+
     acknowledgment.acknowledge();
     }
 

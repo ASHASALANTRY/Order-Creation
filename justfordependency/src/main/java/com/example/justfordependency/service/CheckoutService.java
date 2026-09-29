@@ -82,7 +82,7 @@ public class CheckoutService {
             }
 
             // Propagate the failure so Spring can roll back the Kafka transaction.
-            throw new KafkaException("Failed to process order submission due to downstream network errors.");
+            throw new KafkaException("Failed to publish order checkout event.",e);
         }
 
         return "Your request is successfully Published";

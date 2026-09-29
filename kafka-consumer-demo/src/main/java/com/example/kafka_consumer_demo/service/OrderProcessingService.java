@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -39,11 +40,16 @@ public class OrderProcessingService {
         if(processedEventRepository.existsByEventId(idempotencyKey)){
 //            throw new IllegalArgumentException();
             updateRedis(idempotencyKey);
+            log.info("this order is already processed.Successfully updated status to redis");
             return;
         }
+        Order order=new Order();
 
-        Order order=new Order(); // Implement your actual production database updates here
-        AtomicReference<OrderItem> orderItem= new AtomicReference<>(new OrderItem());
+        Order orderAlreadyExist=orderRepository.getByOrderId(event.getOrderId());
+        if(Objects.nonNull(orderAlreadyExist))
+            order.setId(orderAlreadyExist.getId());
+        order.setOrderId(event.getOrderId());
+
         ArrayList<OrderItem> orderItems=new ArrayList<>();
         event.getItems().forEach(avroItem->{
             OrderItem item = new OrderItem();
@@ -54,8 +60,7 @@ public class OrderProcessingService {
         });
         ShippingAddress shippingAddress=new ShippingAddress();
         ArrayList<ShippingAddress> shipping=new ArrayList<>();
-//        shippingAddress=objectMapper.convertValue(event.getShippingDetails(),ShippingAddress.class);
-        // 2. Manually map shipping details without using ObjectMapper
+
         if (event.getShippingDetails() != null) {
             var avroShipping = event.getShippingDetails();
             shippingAddress.setStreet(avroShipping.getStreet());
@@ -64,25 +69,24 @@ public class OrderProcessingService {
             shippingAddress.setPostalCode(avroShipping.getPostalCode());
         }
             order.setShippingAddress(shippingAddress);
-//        order.setShippingAddress(objectMapper.convertValue(event.getShippingDetails().getSchema(),ShippingAddress.class));
-        order.setOrderId(event.getOrderId());
         order.setCustomerId(event.getCustomerId());
         order.setStatus("PENDING");
         ProcessedEvent processedEvent=new ProcessedEvent();
         processedEvent.setEventId(event.getEventId());
         processedEvent.setEventType(event.getEventType());
         processedEvent.setStatus("PROCESSED");
+
         processedEventRepository.save(processedEvent);
         orderRepository.save(order);
-//        objectMapper.convertValue(OrderCheckoutSubmittedEvent,)
-        log.info("Successfully processed order business logic for ID: {}",event);
-        System.out.printf("Successfully processed order business logic for ID: %s%n" ,event);
+
+        log.info("Successfully processed order business logic for ID: {}",event.getOrderId());
         // Example: If database throws an error here, the ErrorHandler configuration
         // will safely catch it, retry 3 times, and forward to the DLQ if it keeps failing.
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit(){
                 updateRedis(idempotencyKey);
+                log.info("Successfully updated status to redis");
             }
         });
     }
