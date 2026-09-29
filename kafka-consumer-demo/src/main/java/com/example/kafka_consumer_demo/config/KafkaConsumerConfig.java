@@ -37,7 +37,7 @@ public class KafkaConsumerConfig {
             dltStrategy = DltStrategy.FAIL_ON_ERROR
 //            include = { java.sql.SQLException.class }
     )
-        @KafkaListener(topics="order-checkout-events", groupId="order-processing-group")
+        @KafkaListener(topics="order-checkout-events", groupId="order-processing-group"/*, concurrency = "3"*/)
     public void orderConsume(ConsumerRecord<String, OrderCheckoutSubmittedEvent> record,
                              Acknowledgment acknowledgment,
                              @Header(KafkaHeaders.RECEIVED_PARTITION) int partition) {
@@ -49,9 +49,8 @@ public class KafkaConsumerConfig {
     String idempotencyKey = "";
     if(Objects.nonNull(idempotencyKeyHeader))
         idempotencyKey=new String(idempotencyKeyHeader.value(), StandardCharsets.UTF_8);
-    System.out.println("Read event payload! sku ID: " + checkoutSubmittedEvent.getOrderId());
-    System.out.println("Received message from inventory partition: " + partition);
-    System.out.println("Received header idempotencyKey: " + idempotencyKey);
+
+   log.info("Received header idempotencyKey: {}",idempotencyKey);
 
         orderProcessingService.process(checkoutSubmittedEvent,idempotencyKey);
 
